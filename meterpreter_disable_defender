@@ -62,6 +62,7 @@ function onKeyboardUp()
         # if this method gets called, we know the HID keyboard stack is usable
 
         cat <<- EOF | duckhid
+        cat <<- EOF | duckhid
                 DELAY 3000
                 GUI r
                 DELAY 1000
